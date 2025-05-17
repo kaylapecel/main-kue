@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>tap tap the box </title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  body {
+    margin: 0;
+    background: #efd4df;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    font-family: 'Press Start 2P', cursive;
+    user-select: none;
+  }
+  #game-container {
+    background: #ffffff;
+    border: 5px solid #d3829a;
+    width: 480px;
+    height: 640px;
+    box-shadow: 0 0 15px #e39eb0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #ffffff;
+  }
+  #message {
+    color: #d3829a;
+    text-align: center;
+    margin-top: 15px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+  a.gift-link {
+    display: inline-block;
+    margin-top: 12px;
+    text-decoration: none;
+    color: #ffffff;
+    font-weight: bold;
+    border: 2px solid #d3829a;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background-color 0.3s, color 0.3s;
+    background-color: #d3829a;
+  }
+  a.gift-link:hover {
+    background-color: #e58fab;
+    color: #ffffff;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+  <script>
+    // Game variables
+    let player;
+    let cakes = [];
+    let playerSize = 48;
+    let cakeSize = 32;
+    let cakeFallSpeed = 3;
+    let spawnInterval = 80; // frames
+    let framesSinceSpawn = 0;
+    let score = 0;
+    let scoreToWin = 10;
+    let gameOver = false;
+
+    function setup() {
+      let canvas = createCanvas(480, 560);
+      canvas.parent('game-container');
+      player = new Player();
+      score = 0;
+      gameOver = false;
+      cakes = [];
+      framesSinceSpawn = 0;
+      textFont('Press Start 2P');
+      textSize(14);
+      fill('#d3829a');
+      noStroke();
+    }
+
+    function draw() {
+      background('#ffffff');
+
+      if (!gameOver) {
+        player.update();
+        player.show();
+
+        framesSinceSpawn++;
+        if (framesSinceSpawn >= spawnInterval) {
+          cakes.push(new Cake());
+          framesSinceSpawn = 0;
+        }
+
+        for (let i = cakes.length - 1; i >= 0; i--) {
+          cakes[i].update();
+          cakes[i].show();
+
+          if (cakes[i].hits(player)) {
+            score++;
+            cakes.splice(i, 1);
+            if(score >= scoreToWin){
+              gameOver = true;
+              showMessage();
+            }
+          } else if (cakes[i].offscreen()) {
+            cakes.splice(i, 1);
+          }
+        }
+
+        // Draw score
+        fill('#d3829a');
+        textAlign(LEFT, TOP);
+        text("how many cakes you caought kaka: " + score + " / " + scoreToWin, 10, 10);
+
+        // Instructions
+        fill('#d3829a');
+        textAlign(CENTER);
+        text("i micu huft", width / 2, height - 30);
+
+      } else {
+        // Game over, message shown by showMessage()
+      }
+    }
+
+    class Player {
+      constructor() {
+        this.x = width / 2;
+        this.y = height - playerSize - 8;
+        this.speed = 7;
+        this.size = playerSize;
+        this.bounceOffset = 0;
+        this.bounceDirection = 1;
+      }
+
+      update() {
+        // Bounce animation up and down gently
+        this.bounceOffset += 0.15 * this.bounceDirection;
+        if (this.bounceOffset > 4 || this.bounceOffset < -4) {
+          this.bounceDirection *= -1;
+        }
+
+        if (keyIsDown(LEFT_ARROW) || keyIsDown(65)) {  // Arrow Left or 'A'
+          this.x -= this.speed;
+        }
+        if (keyIsDown(RIGHT_ARROW) || keyIsDown(68)) { // Arrow Right or 'D'
+          this.x += this.speed;
+        }
+        this.x = constrain(this.x, this.size / 2, width - this.size / 2);
+      }
+
+      show() {
+        rectMode(CENTER);
+
+        // Draw body (soft purple pastel)
+        fill('#d3829a');
+        rect(this.x, this.y + this.bounceOffset, this.size, this.size, 8);
+
+        // Eyes - big and cute
+        fill('#ffffff');
+        rect(this.x - 10, this.y - 8 + this.bounceOffset, 12, 16, 4);
+        rect(this.x + 10, this.y - 8 + this.bounceOffset, 12, 16, 4);
+
+        fill('#612d2d');
+        rect(this.x - 10, this.y - 8 + this.bounceOffset, 6, 9, 3);
+        rect(this.x + 10, this.y - 8 + this.bounceOffset, 6, 9, 3);
+
+        // Blush circles
+        fill('#f5b7b1');
+        ellipse(this.x - 20, this.y + 4 + this.bounceOffset, 14, 10);
+        ellipse(this.x + 20, this.y + 4 + this.bounceOffset, 14, 10);
+
+        // Mouth - small pink smile
+        fill('#ff7f7f');
+        rect(this.x, this.y + 14 + this.bounceOffset, 20, 8, 4);
+      }
+    }
+
+    class Cake {
+      constructor() {
+        this.x = random(cakeSize/2, width - cakeSize/2);
+        this.y = -cakeSize;
+        this.size = cakeSize;
+        this.speed = cakeFallSpeed + random(0, 1);
+        this.sparklePhase = random(TWO_PI);
+      }
+
+      update() {
+        this.y += this.speed;
+        this.sparklePhase += 0.1;
+      }
+
+      show() {
+        rectMode(CENTER);
+        noStroke();
+
+        // Cake base - pastel pink
+        fill('#ffb6c1');
+        rect(this.x, this.y, this.size, this.size, 6);
+
+        // Icing - cream white with sprinkles
+        fill('#fff0f5');
+        rect(this.x, this.y - this.size/4, this.size * 0.9, this.size * 0.3, 6);
+
+        // Cherry on top - red circle with sparkle
+        fill('#e63946');
+        ellipse(this.x, this.y - this.size/2 + 4, this.size * 0.4, this.size * 0.4);
+
+        // Sparkles around cherry
+        fill(255, 255, 255, 150 + 100 * sin(this.sparklePhase));
+        ellipse(this.x - 6, this.y - this.size/2 + 10, 6, 4);
+        ellipse(this.x + 6, this.y - this.size/2 + 10, 6, 4);
+      }
+
+      hits(player) {
+        let d = dist(this.x, this.y, player.x, player.y);
+        return d < (this.size + player.size) / 2 * 0.8;
+      }
+
+      offscreen() {
+        return this.y > height + this.size;
+      }
+    }
+
+    function showMessage() {
+      noLoop();
+      let container = document.getElementById('game-container');
+
+      let messageDiv = document.createElement('div');
+      messageDiv.id = 'message';
+      messageDiv.innerHTML = `
+        <p>im so bored right now and im gonna meet you tomorrow</p>
+       
+      `;
+      container.appendChild(messageDiv);
+    }
+  </script>
+</div>
+</body>
+</html>
+
